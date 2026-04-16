@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - My Health</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --color-background-primary: #ffffff;
+            --color-background-secondary: #f7f7f7;
+            --color-background-tertiary: #f0f0f0;
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #666;
+            --color-text-tertiary: #999;
+            --color-border-primary: #e0e0e0;
+            --color-border-secondary: #d0d0d0;
+            --color-border-tertiary: #e8e8e8;
+            --hospital-blue: #1E5BA8;
+            --hospital-blue-light: #E6F1FB;
+            --success-green: #27AE60;
+            --success-green-light: #E8F8F0;
+            --warning-red: #E74C3C;
+            --warning-red-light: #FCEBEB;
+            --border-radius-md: 6px;
+            --border-radius-lg: 8px;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); font-size: 14px; color: var(--color-text-primary); background: var(--color-background-tertiary); }
+
+        /* Main Layout */
+        .dashboard { display: flex; height: 100vh; }
+        .sidebar { width: 240px; background: var(--color-background-primary); border-right: 1px solid var(--color-border-tertiary); overflow-y: auto; padding: 20px 16px; }
+        .main-content { flex: 1; overflow-y: auto; padding: 20px 32px; max-width: 1200px; width: 100%; }
+
+        /* Header */
+        .header { background: linear-gradient(135deg, var(--hospital-blue) 0%, #2E7DB8 100%); color: white; padding: 30px 32px; margin: -20px -32px 30px -32px; border-radius: 0 0 8px 8px; }
+        .header-content { max-width: 1200px; }
+        .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+        .header-subtitle { font-size: 14px; opacity: 0.9; }
+        .header-actions { display: flex; gap: 12px; margin-top: 16px; }
+
+        /* Sidebar */
+        .sidebar-section { margin-bottom: 24px; }
+        .sidebar-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 12px; }
+        .patient-info { background: var(--hospital-blue-light); border-left: 4px solid var(--hospital-blue); border-radius: var(--border-radius-md); padding: 14px; margin-bottom: 16px; }
+        .patient-info-label { font-size: 11px; color: var(--color-text-secondary); }
+        .patient-info-value { font-size: 14px; font-weight: 500; margin-top: 4px; }
+        .sidebar-item { padding: 10px 12px; border-radius: var(--border-radius-md); font-size: 13px; margin-bottom: 6px; cursor: pointer; transition: background 0.15s; }
+        .sidebar-item:hover { background: var(--color-background-secondary); }
+        .logout-btn { width: 100%; padding: 10px; background: var(--warning-red-light); color: var(--warning-red); border: 1px solid #F7C1C1; border-radius: var(--border-radius-md); font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+        .logout-btn:hover { background: #F7C1C1; }
+
+        /* Button Styles */
+        .btn { padding: 8px 16px; border-radius: var(--border-radius-md); font-size: 13px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+        .btn-primary { background: var(--hospital-blue); color: white; }
+        .btn-primary:hover { background: #1d4f92; }
+        .btn-secondary { background: var(--hospital-blue-light); color: var(--hospital-blue); border-color: #B5D4F4; }
+        .btn-secondary:hover { background: #B5D4F4; }
+        .btn-green { background: var(--success-green-light); color: var(--success-green); border-color: #C0DD97; }
+        .btn-green:hover { background: #C0DD97; }
+        .btn-danger { background: var(--warning-red-light); color: var(--warning-red); border-color: #F7C1C1; }
+        .btn-danger:hover { background: #F7C1C1; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+
+        /* Sections */
+        .section { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 24px; margin-bottom: 20px; }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--color-text-primary); display: flex; align-items: center; gap: 10px; }
+        .section-title::before { content: ''; width: 4px; height: 20px; background: var(--hospital-blue); border-radius: 2px; }
+
+        /* Health Overview */
+        .health-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .health-item { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px; }
+        .health-item-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
+        .health-item-value { font-size: 24px; font-weight: 600; }
+        .health-item-value.risk-high { color: var(--warning-red); }
+        .health-item-value.risk-moderate { color: #854F0B; }
+        .health-item-value.risk-low { color: var(--success-green); }
+        .risk-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+        .risk-badge.high { background: var(--warning-red-light); color: var(--warning-red); }
+        .risk-badge.moderate { background: #FAEEDA; color: #854F0B; }
+        .risk-badge.low { background: var(--success-green-light); color: var(--success-green); }
+
+        /* Financial Dashboard */
+        .financial-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .summary-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 18px; border-left: 4px solid; }
+        .summary-card.pending { border-left-color: var(--warning-red); }
+        .summary-card.paid { border-left-color: var(--success-green); }
+        .summary-label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+        .summary-value.pending { color: var(--warning-red); }
+        .summary-value.paid { color: var(--success-green); }
+
+        /* Payment History */
+        .payment-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .payment-table thead { background: var(--color-background-secondary); }
+        .payment-table th { padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border-tertiary); }
+        .payment-table td { padding: 12px; border-bottom: 1px solid var(--color-border-tertiary); font-size: 13px; }
+        .payment-table tr:last-child td { border-bottom: none; }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+        .status-paid { background: var(--success-green-light); color: var(--success-green); }
+        .status-pending { background: var(--warning-red-light); color: var(--warning-red); }
+
+        /* Medical History Timeline */
+        .timeline { position: relative; padding-left: 30px; }
+        .timeline-item { margin-bottom: 20px; }
+        .timeline-item::before { content: ''; position: absolute; left: -15px; top: 3px; width: 12px; height: 12px; background: var(--hospital-blue); border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px var(--hospital-blue); }
+        .timeline-item:not(:last-child)::after { content: ''; position: absolute; left: -9px; top: 18px; width: 2px; height: calc(100% + 2px); background: var(--hospital-blue); }
+        .timeline-date { font-size: 12px; font-weight: 600; color: var(--hospital-blue); margin-bottom: 4px; }
+        .timeline-content { background: var(--color-background-secondary); padding: 12px 14px; border-radius: var(--border-radius-md); }
+        .timeline-content p { font-size: 13px; margin: 4px 0; }
+        .timeline-content strong { color: var(--color-text-primary); }
+
+        /* Medical Documents */
+        .documents-list { display: grid; gap: 10px; }
+        .document-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); }
+        .document-info { flex: 1; }
+        .document-name { font-size: 13px; font-weight: 500; }
+        .document-date { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+        .document-actions { display: flex; gap: 8px; }
+
+        /* Wellness Section */
+        .wellness-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .quote-box { background: linear-gradient(135deg, var(--hospital-blue-light) 0%, #F0F5FF 100%); border-left: 4px solid var(--hospital-blue); border-radius: var(--border-radius-md); padding: 20px; }
+        .quote-text { font-size: 16px; font-weight: 500; color: var(--hospital-blue); margin-bottom: 8px; line-height: 1.5; }
+        .quote-author { font-size: 12px; color: var(--color-text-secondary); font-style: italic; }
+        .tips-box { background: var(--success-green-light); border-left: 4px solid var(--success-green); border-radius: var(--border-radius-md); padding: 20px; }
+        .tips-title { font-size: 14px; font-weight: 600; color: var(--success-green); margin-bottom: 12px; }
+        .tips-list { list-style: none; }
+        .tips-list li { font-size: 13px; color: var(--color-text-primary); margin-bottom: 8px; padding-left: 20px; position: relative; }
+        .tips-list li::before { content: '✓'; position: absolute; left: 0; color: var(--success-green); font-weight: bold; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--color-background-primary); border-radius: var(--border-radius-lg); padding: 24px; max-width: 500px; width: 90%; }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+        .modal-body { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 20px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--color-border-tertiary); padding: 16px; }
+            .health-grid { grid-template-columns: 1fr; }
+            .financial-summary { grid-template-columns: 1fr; }
+            .wellness-container { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .main-content { padding: 16px; }
+            .header { padding: 20px 16px; margin: -16px -16px 20px -16px; }
+            .section { padding: 16px; }
+            .header h1 { font-size: 22px; }
+            .health-grid { grid-template-columns: 1fr; }
+            .financial-summary { grid-template-columns: 1fr; }
+            .payment-table { font-size: 12px; }
+            .payment-table th, .payment-table td { padding: 8px; }
+        }
+
+        .print-receipt { padding: 20px; font-family: Arial, sans-serif; }
+        .receipt-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--hospital-blue); padding-bottom: 10px; }
+        .receipt-title { font-size: 18px; font-weight: bold; color: var(--hospital-blue); }
+        .receipt-info { font-size: 12px; margin: 5px 0; }
+        .receipt-table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        .receipt-table th, .receipt-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+        .receipt-total { text-align: right; font-size: 16px; font-weight: bold; margin-top: 10px; color: var(--hospital-blue); }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="patient-info">
+                    <div class="patient-info-label">Patient Name</div>
+                    <div class="patient-info-value" id="patientName">Loading...</div>
+                    <div class="patient-info-label" style="margin-top: 10px;">Patient ID</div>
+                    <div class="patient-info-value" id="patientId" style="font-size: 12px;">-</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Quick Actions</div>
+                <button class="sidebar-item" onclick="scrollToSection('financial')">📄 View Bills</button>
+                <button class="sidebar-item" onclick="scrollToSection('medical')">📋 Medical History</button>
+                <button class="sidebar-item" onclick="scrollToSection('wellness')">💚 Wellness Tips</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Healthcare Team</div>
+                <div class="patient-info" style="background: var(--hospital-blue-light); border-left-color: var(--hospital-blue);">
+                    <div class="patient-info-label">Doctor</div>
+                    <div class="patient-info-value" id="doctorName" style="font-size: 13px;">-</div>
+                    <div class="patient-info-label" style="margin-top: 8px;">Phone</div>
+                    <div class="patient-info-value" id="doctorPhone" style="font-size: 12px;">-</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <form action="/logout" method="GET" style="width: 100%;">
+                    <button type="submit" class="logout-btn">🚪 Logout</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-content">
+                    <h1>Welcome to Your Health Dashboard</h1>
+                    <p class="header-subtitle">Monitor your health, review medical records, and stay informed about your recovery</p>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary btn-small" onclick="downloadAllRecords()">📥 Download Records</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Overview Section -->
+            <div class="section">
+                <h2 class="section-title">Health Overview</h2>
+                <div class="health-grid">
+                    <div class="health-item">
+                        <div class="health-item-label">Current Risk Level</div>
+                        <div class="health-item-value" id="riskLevel">-</div>
+                        <div class="risk-badge" id="riskBadge">-</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-item-label">Days in Hospital</div>
+                        <div class="health-item-value" id="daysAdmitted">-</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-item-label">Heart Rate (bpm)</div>
+                        <div class="health-item-value" id="hr">-</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-item-label">Temperature (°C)</div>
+                        <div class="health-item-value" id="temp">-</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-item-label">Blood Pressure</div>
+                        <div class="health-item-value" id="bp">-</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-item-label">Oxygen Saturation (%)</div>
+                        <div class="health-item-value" id="o2">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Dashboard Section -->
+            <div class="section" id="financial">
+                <h2 class="section-title">Billing & Payments</h2>
+
+                <div class="financial-summary">
+                    <div class="summary-card paid">
+                        <div class="summary-label">Total Amount Paid</div>
+                        <div class="summary-value paid" id="totalPaid">₹0</div>
+                    </div>
+                    <div class="summary-card pending">
+                        <div class="summary-label">Pending Amount</div>
+                        <div class="summary-value pending" id="totalPending">₹0</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 14px; font-weight: 600;">Payment History</h3>
+                <table class="payment-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px;">Loading payment history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Medical Documents & History Section -->
+            <div class="section" id="medical">
+                <h2 class="section-title">Medical Documents & History</h2>
+
+                <h3 style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">📄 Available Documents</h3>
+                <div class="documents-list" id="documentsList">
+                    <div style="text-align: center; padding: 20px; color: var(--color-text-secondary);">Loading documents...</div>
+                </div>
+
+                <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 14px; font-weight: 600;">📋 Medical History Timeline</h3>
+                <div class="timeline" id="medicalTimeline">
+                    <div style="text-align: center; padding: 20px; color: var(--color-text-secondary);">Loading medical history...</div>
+                </div>
+            </div>
+
+            <!-- Wellness Section -->
+            <div class="section" id="wellness">
+                <h2 class="section-title">Wellness & Support</h2>
+                <div class="wellness-container">
+                    <div class="quote-box">
+                        <div class="quote-text" id="quoteText">"Health is a state of complete physical, mental and social well-being, not merely the absence of disease or infirmity." - WHO</div>
+                        <div class="quote-author">Recovery Motivation</div>
+                        <button class="btn btn-primary btn-small" style="margin-top: 12px;" onclick="loadNewQuote()">Get Inspiration</button>
+                    </div>
+                    <div class="tips-box">
+                        <div class="tips-title">Daily Health Tips</div>
+                        <ul class="tips-list" id="healthTips">
+                            <li>Stay hydrated - drink plenty of water throughout the day</li>
+                            <li>Follow your doctor's medication schedule strictly</li>
+                            <li>Get adequate rest - aim for 7-8 hours of sleep</li>
+                            <li>Light exercise as recommended by your doctor</li>
+                            <li>Maintain a positive mindset for faster recovery</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 20px; margin-top: 30px; border-top: 1px solid var(--color-border-tertiary); color: var(--color-text-secondary); font-size: 12px;">
+                <p>If you have any questions or concerns, please contact your healthcare team immediately.</p>
+                <p style="margin-top: 8px;">Emergency: +91-9999-999-999 | Hospital: +91-8888-888-888</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div class="modal" id="receiptModal">
+        <div class="modal-content">
+            <div class="modal-title">Receipt Options</div>
+            <div class="modal-body">
+                <p>Choose how you would like to download this receipt:</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('receiptModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="printReceipt()">Print Receipt</button>
+                <button class="btn btn-primary" onclick="downloadPDF()">Download as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Patient data from server
+        const patientData = {
+            id: '{{ patient_id or "P001" }}',
+            name: '{{ patient_name or "John Doe" }}',
+            age: '{{ patient_age or "45" }}',
+            doctor: '{{ doctor_name or "Dr. Smith" }}',
+            doctorPhone: '{{ doctor_phone or "+91-9999-999-999" }}',
+            admitted: '{{ admission_date or "2024-03-15" }}',
+            riskScore: parseFloat('{{ sepsis_risk or "0.65" }}'),
+            vitals: {
+                hr: '{{ vitals_hr or "92" }}',
+                temp: '{{ vitals_temp or "37.2" }}',
+                sbp: '{{ vitals_sbp or "128" }}',
+                dbp: '{{ vitals_dbp or "82" }}',
+                o2: '{{ vitals_o2 or "96" }}'
+            }
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            loadPatientData();
+            loadBillingData();
+            loadMedicalHistory();
+            loadWellnessContent();
+        });
+
+        function initializeDashboard() {
+            // Set patient info in sidebar
+            document.getElementById('patientName').textContent = patientData.name;
+            document.getElementById('patientId').textContent = patientData.id;
+            document.getElementById('doctorName').textContent = patientData.doctor;
+            document.getElementById('doctorPhone').textContent = patientData.doctorPhone;
+        }
+
+        function loadPatientData() {
+            // Calculate days admitted
+            const admitDate = new Date(patientData.admitted);
+            const today = new Date();
+            const daysAdmitted = Math.floor((today - admitDate) / (1000 * 60 * 60 * 24));
+
+            // Risk level and badge
+            let riskLevel, riskClass;
+            if (patientData.riskScore > 0.7) {
+                riskLevel = 'High Risk';
+                riskClass = 'high';
+            } else if (patientData.riskScore > 0.4) {
+                riskLevel = 'Moderate Risk';
+                riskClass = 'moderate';
+            } else {
+                riskLevel = 'Low Risk';
+                riskClass = 'low';
+            }
+
+            document.getElementById('riskLevel').textContent = (patientData.riskScore * 100).toFixed(1) + '%';
+            document.getElementById('riskLevel').className = 'health-item-value risk-' + riskClass;
+            document.getElementById('riskBadge').textContent = riskLevel;
+            document.getElementById('riskBadge').className = 'risk-badge ' + riskClass;
+
+            document.getElementById('daysAdmitted').textContent = daysAdmitted + ' days';
+            document.getElementById('hr').textContent = patientData.vitals.hr;
+            document.getElementById('temp').textContent = patientData.vitals.temp + '°';
+            document.getElementById('bp').textContent = patientData.vitals.sbp + '/' + patientData.vitals.dbp;
+            document.getElementById('o2').textContent = patientData.vitals.o2 + '%';
+        }
+
+        function loadBillingData() {
+            // Mock billing data
+            const bills = [
+                { date: '2024-03-20', description: 'ICU Room Charges', amount: 25000, status: 'Paid' },
+                { date: '2024-03-21', description: 'Medications & IV Fluids', amount: 8500, status: 'Paid' },
+                { date: '2024-03-22', description: 'Laboratory Tests', amount: 5200, status: 'Paid' },
+                { date: '2024-03-23', description: 'Doctor Consultation', amount: 3000, status: 'Paid' },
+                { date: '2024-03-24', description: 'Nursing Care & Monitoring', amount: 6000, status: 'Pending' },
+                { date: '2024-03-25', description: 'CT Scan & Imaging', amount: 12000, status: 'Pending' },
+                { date: '2024-03-26', description: 'Surgeon Fees', amount: 15000, status: 'Pending' }
+            ];
+
+            let totalPaid = 0, totalPending = 0;
+            let tableHTML = '';
+
+            bills.forEach(bill => {
+                const statusClass = bill.status === 'Paid' ? 'status-paid' : 'status-pending';
+                tableHTML += `
+                    <tr>
+                        <td>${bill.date}</td>
+                        <td>${bill.description}</td>
+                        <td>₹${bill.amount.toLocaleString()}</td>
+                        <td><span class="status-badge ${statusClass}">${bill.status}</span></td>
+                        <td><button class="btn btn-secondary btn-small" onclick="viewReceipt('${bill.date}', '${bill.description}', ${bill.amount})">View</button></td>
+                    </tr>
+                `;
+
+                if (bill.status === 'Paid') {
+                    totalPaid += bill.amount;
+                } else {
+                    totalPending += bill.amount;
+                }
+            });
+
+            document.getElementById('totalPaid').textContent = '₹' + totalPaid.toLocaleString();
+            document.getElementById('totalPending').textContent = '₹' + totalPending.toLocaleString();
+            document.getElementById('paymentTableBody').innerHTML = tableHTML;
+        }
+
+        function loadMedicalHistory() {
+            // Mock medical history
+            const history = [
+                {
+                    date: '2024-03-26',
+                    type: 'Admission',
+                    details: 'Admitted to ICU with suspected sepsis. Started on broad-spectrum antibiotics.'
+                },
+                {
+                    date: '2024-03-23',
+                    type: 'Lab Test',
+                    details: 'Blood cultures and sensitivity tests completed. WBC: 14.5K, Lactate: 3.2'
+                },
+                {
+                    date: '2024-03-20',
+                    type: 'Medical Consultation',
+                    details: 'Dr. Smith reviewed sepsis risk assessment. Risk Score: 0.65 (Moderate Risk)'
+                },
+                {
+                    date: '2024-01-15',
+                    type: 'Previous Admission',
+                    details: 'Hospitalized for pneumonia treatment. Discharged on 2024-01-22 after full recovery.'
+                },
+                {
+                    date: '2023-12-01',
+                    type: 'Regular Checkup',
+                    details: 'Annual health checkup - All vitals normal. No major health concerns.'
+                }
+            ];
+
+            // Available documents
+            const documents = [
+                { name: 'Latest Medical Report', date: '2024-03-26' },
+                { name: 'Lab Test Results', date: '2024-03-23' },
+                { name: 'Discharge Summary (Previous)', date: '2024-01-22' },
+                { name: 'Medical Certificate', date: '2024-01-22' }
+            ];
+
+            let timelineHTML = '';
+            history.forEach(item => {
+                timelineHTML += `
+                    <div class="timeline-item">
+                        <div class="timeline-date">${item.date}</div>
+                        <div class="timeline-content">
+                            <p><strong>${item.type}</strong></p>
+                            <p>${item.details}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('medicalTimeline').innerHTML = timelineHTML;
+
+            let docHTML = '';
+            documents.forEach(doc => {
+                docHTML += `
+                    <div class="document-item">
+                        <div class="document-info">
+                            <div class="document-name">📄 ${doc.name}</div>
+                            <div class="document-date">${doc.date}</div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="btn btn-secondary btn-small" onclick="downloadDocument('${doc.name}')">Download</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('documentsList').innerHTML = docHTML;
+        }
+
+        function loadWellnessContent() {
+            const quotes = [
+                "Healing is a process. Be patient with yourself. Every day is a step towards recovery.",
+                "Your body has an amazing capacity to heal. Trust the process and take care of yourself.",
+                "Recovery is not a destination, it's a journey. Celebrate small victories along the way.",
+                "You are stronger than you think. Take it one day at a time.",
+                "Mental health is just as important as physical health. Be kind to yourself during recovery.",
+                "Focus on what you can control today. Tomorrow will take care of itself.",
+                "Recovery requires rest, patience, and self-compassion. You've got this!"
+            ];
+
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            document.getElementById('quoteText').textContent = '"' + randomQuote + '"';
+        }
+
+        function loadNewQuote() {
+            const quotes = [
+                "Healing is a process. Be patient with yourself. Every day is a step towards recovery.",
+                "Your body has an amazing capacity to heal. Trust the process and take care of yourself.",
+                "Recovery is not a destination, it's a journey. Celebrate small victories along the way.",
+                "You are stronger than you think. Take it one day at a time.",
+                "Mental health is just as important as physical health. Be kind to yourself during recovery.",
+                "Focus on what you can control today. Tomorrow will take care of itself.",
+                "Recovery requires rest, patience, and self-compassion. You've got this!",
+                "Hope is a powerful medicine. Believe in your recovery.",
+                "Your health is your wealth. Invest in yourself every single day.",
+                "Progress, not perfection. Every small step counts in your recovery journey."
+            ];
+
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            const quoteEl = document.getElementById('quoteText');
+            quoteEl.style.opacity = '0.5';
+            setTimeout(() => {
+                quoteEl.textContent = '"' + randomQuote + '"';
+                quoteEl.style.opacity = '1';
+            }, 300);
+        }
+
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function viewReceipt(date, description, amount) {
+            const receiptContent = `
+                <div class="print-receipt">
+                    <div class="receipt-header">
+                        <div class="receipt-title">🏥 Hospital Receipt</div>
+                        <div class="receipt-info">Receipt Date: ${date}</div>
+                        <div class="receipt-info">Patient: ${patientData.name}</div>
+                        <div class="receipt-info">Patient ID: ${patientData.id}</div>
+                    </div>
+                    <div class="receipt-table">
+                        <tr>
+                            <th>Description</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                        <tr>
+                            <td>${description}</td>
+                            <td style="text-align: right;">₹${amount.toLocaleString()}</td>
+                        </tr>
+                    </div>
+                    <div class="receipt-total">Total: ₹${amount.toLocaleString()}</div>
+                    <div class="receipt-info" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
+                        <strong>Thank you for your payment!</strong>
+                    </div>
+                </div>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function downloadDocument(docName) {
+            alert(`Downloading ${docName}...`);
+            // In a real implementation, this would trigger a file download
+        }
+
+        function downloadAllRecords() {
+            alert('All records will be downloaded as a ZIP file.');
+            // In a real implementation, this would download all patient records
+        }
+
+        function downloadPDF() {
+            alert('Downloading receipt as PDF...');
+            closeModal('receiptModal');
+        }
+
+        function printReceipt() {
+            window.print();
+            closeModal('receiptModal');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+    </script>
+</body>
+</html>
